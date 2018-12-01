@@ -201,3 +201,16 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'input-text')])
     # added calculated fields
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
+
+
+def active_choice(parser, xml_parent, data):
+    pass
+
+
+def active_choice_reactive(parser, xml_parent, data):
+    pass
+
+
+def active_choice_reactive_reference(parser, xml_parent, data):
+    pass
+
