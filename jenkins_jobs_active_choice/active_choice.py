@@ -123,6 +123,7 @@ def _unique_string(project, name):
     return 'choice-param-{0}-{1}'.format(project, name).lower()
 
 
+# XXXXXXX still here for backwards compatibility
 def cascade_choice_parameter(parser, xml_parent, data):
     """yaml: cascade-choice
     Creates an active choice parameter
@@ -191,11 +192,12 @@ def cascade_choice_parameter(parser, xml_parent, data):
     _add_script(scripts, "secureFallbackScript", data.get("fallback-script", ""))
 
     _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'single')])
-    # added calculated fields
+    # add calculated fields
     logging.debug('cascade_choice data: %s' % data['project'])
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
     
 
+# XXXXXXX still here for backwards compatibility
 def dynamic_reference_parameter(parser, xml_parent, data):
     """yaml: dynamic-reference
     Creates an active choice dynamic reference parameter
@@ -263,7 +265,7 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     _add_script(scripts, "secureFallbackScript", data.get("fallback-script", ""))
 
     _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'input-text')])
-    # added calculated fields
+    # add calculated fields
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
     
 
@@ -306,9 +308,9 @@ def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data
         _add_scriptler(section, param_name, data.get('scriptler'))
 
     # set the choice-type; default is single
-    _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'single')])
+    _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'default')])
 
-    # added calculated fields
+    # add calculated fields
     _add_element(section, 'randomName', _unique_string(data['project'], param_name))
 
 
@@ -318,26 +320,27 @@ def active_choice(parser, xml_parent, data):
     Creates an active choice parameter
     Requires the Jenkins :jenkins-wiki:`Active Choices Plugin <Active+Choices+Plugin>`.
 
-    :arg str name: the name of the parameter
-    :arg str project: the project name (can be anything; not really used)
-    :arg str description: a description of the parameter (optional)
-    # USE EITHER groovy or scripter, not both
+    :arg str name: the name of the parameter (REQUIRED)
+    :arg str project: the project name (not really used for anything so any value will do) (REQUIRED)
+    :arg str description: a description of the parameter (OPTIONAL)
+    # REQUIRED: YOU MUST USE EITHER groovy or scripter, not both
     :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
         :arg str script: the actual groovy script
-        :arg str classpath: additional class paths for your groovy code (optional; absolutes paths or URLs)
-        :arg str sandbox: run this script in a sandbox (optional; default false)
-    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (optional)
-        :arg str script: the actual fallback groovy script
-        :arg str classpath: additional class paths for your groovy code (optional)
-        :arg str sandbox: run this script in a sandbox (optional; default false)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (OPTIONAL)
+        :arg str script: the actual fallback groovy script (REQIRED, IF you define fallback)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
     :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
-        :arg str script: simple file name of the scriptler script from the system library of scripts; not an absolute path
-        :arg hash-map parameters: list of parameters (optional; key-value pairs)
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an 
+            absolute path (REQIRED, IF you define scriptler)
+        :arg list parameters: list of parameters (OPTIONAL; key-value pairs)
             :arg key-value "<KEYNAME>: <VALUE>" 
             ...
-    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox
-    arg: bool filterable: provide interactive filtering (optional; default false)
-    arg: bool filter-length: number of lines to show in the filter (optional; default 1)
+    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox (OPTIONAL; default single)
+    arg: bool filterable: provide interactive filtering (OPTIONAL; default false)
+    arg: bool filter-length: number of lines to show in the filter (OPTIONAL; default 1)
     Example::
 
     .. code-block:: yaml
@@ -364,16 +367,17 @@ def active_choice(parser, xml_parent, data):
           project: 'active-choice-example'
           description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
           scriptler:
-              script: my-scriptler-script
+              script: foo-bar-scriptler
               parameters:
-                  PARAM1:  some-value01
-                  PARAM2:  some-value02
+                  - PARAM1:  some-value01
+                  - PARAM2:  some-value02
           visible-item-count: 1
           choice-type: single
 
     """
 
     CHOICE_TYPE = {
+        'default': 'PT_SINGLE_SELECT',
         'single': 'PT_SINGLE_SELECT',
         'multi': 'PT_MULTI_SELECT',
         'checkbox': 'PT_CHECKBOX',
@@ -402,36 +406,37 @@ def active_choice_reactive(parser, xml_parent, data):
     Creates an active choice reactive parameter
     Requires the Jenkins :jenkins-wiki:`Active Choices Plugin <Active+Choices+Plugin>`.
 
-    :arg str name: the name of the parameter
-    :arg str project: the project name (can be anything; not really used)
-    :arg str description: a description of the parameter (optional)
-    # USE EITHER groovy or scripter, not both
+    :arg str name: the name of the parameter (REQUIRED)
+    :arg str project: the project name (not really used for anything so any value will do) (REQUIRED)
+    :arg str description: a description of the parameter (OPTIONAL)
+    # REQUIRED: YOU MUST USE EITHER groovy or scripter, not both
     :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
         :arg str script: the actual groovy script
-        :arg str classpath: additional class paths for your groovy code (optional; absolutes paths or URLs)
-        :arg str sandbox: run this script in a sandbox (optional; default false)
-    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (optional)
-        :arg str script: the actual fallback groovy script
-        :arg str classpath: additional class paths for your groovy code (optional)
-        :arg str sandbox: run this script in a sandbox (optional; default false)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (OPTIONAL)
+        :arg str script: the actual fallback groovy script (REQIRED, IF you define fallback)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
     :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
-        :arg str script: simple file name of the scriptler script from the system library of scripts; not an absolute path
-        :arg hash-map parameters: list of parameters (optional; key-value pairs)
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an 
+            absolute path (REQIRED, IF you define scriptler)
+        :arg list parameters: list of parameters (OPTIONAL; key-value pairs)
             :arg key-value "<KEYNAME>: <VALUE>" 
             ...
-    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox
-    arg: str reference: comma-separated list of other PARAMETERS to which this one will react
-    arg: bool filterable: provide interactive filtering (optional; default false)
-    arg: bool filter-length: number of lines to show in the filter (optional; default 1)
+    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox (OPTIONAL; default single)
+    arg: bool filterable: provide interactive filtering (OPTIONAL; default false)
+    arg: bool filter-length: number of lines to show in the filter (OPTIONAL; default 1)
+    arg: str reference: comma-separated list of other PARAMETERS to which this one will react (OPTIONAL; but if you leave it out, what's the point?)
     Example::
 
     .. code-block:: yaml
 
     # using groovy
-    - active-choice:
-          name: ACTIVE_CHOICE_01
-          project: 'active-choice-example'
-          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+    - active-choice-reactive:
+          name: ACTIVE_CHOICE_REACTIVE_01
+          project: 'active-choice-reactive-example'
+          description: "A parameter named ACTIVE_CHOICE_REACTIVE_01 with options foo and bar."
           groovy:
               script: |
                   return ['foo:selected', 'bar']
@@ -445,15 +450,15 @@ def active_choice_reactive(parser, xml_parent, data):
           choice-type: single
 
     # using scriptler
-    - active-choice:
-          name: ACTIVE_CHOICE_01
-          project: 'active-choice-example'
-          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+    - active-choice-reactive:
+          name: ACTIVE_CHOICE_REACTIVE_02
+          project: 'active-choice-reactive-example'
+          description: "A parameter named ACTIVE_CHOICE_REACTIVE_02 with options foo and bar."
           scriptler:
-              script: my-scriptler-script
+              script: foo-bar-scriptler
               parameters:
-                  PARAM1:  some-value01
-                  PARAM2:  some-value02
+                  - PARAM1:  some-value01
+                  - PARAM2:  some-value02
           visible-item-count: 1
           reference: STR_PARAM,CHOICE_PARAM
           choice-type: single
@@ -461,6 +466,7 @@ def active_choice_reactive(parser, xml_parent, data):
     """
 
     CHOICE_TYPE = {
+        'default': 'PT_SINGLE_SELECT',
         'single': 'PT_SINGLE_SELECT',
         'multi': 'PT_MULTI_SELECT',
         'checkbox': 'PT_CHECKBOX',
@@ -491,36 +497,38 @@ def active_choice_reactive_reference(parser, xml_parent, data):
     Creates an active choice reactive reference parameter
     Requires the Jenkins :jenkins-wiki:`Active Choices Plugin <Active+Choices+Plugin>`.
 
-    :arg str name: the name of the parameter
-    :arg str project: the project name (can be anything; not really used)
-    :arg str description: a description of the parameter (optional)
-    # USE EITHER groovy or scripter, not both
+    :arg str name: the name of the parameter (REQUIRED)
+    :arg str project: the project name (not really used for anything so any value will do) (REQUIRED)
+    :arg str description: a description of the parameter (OPTIONAL)
+    # REQUIRED: YOU MUST USE EITHER groovy or scripter, not both
     :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
         :arg str script: the actual groovy script
-        :arg str classpath: additional class paths for your groovy code (optional; absolutes paths or URLs)
-        :arg str sandbox: run this script in a sandbox (optional; default false)
-    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (optional)
-        :arg str script: the actual fallback groovy script
-        :arg str classpath: additional class paths for your groovy code (optional)
-        :arg str sandbox: run this script in a sandbox (optional; default false)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (OPTIONAL)
+        :arg str script: the actual fallback groovy script (REQIRED, IF you define fallback)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
     :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
-        :arg str script: simple file name of the scriptler script from the system library of scripts; not an absolute path
-        :arg hash-map parameters: list of parameters (optional; key-value pairs)
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an 
+            absolute path (REQIRED, IF you define scriptler)
+        :arg list parameters: list of parameters (OPTIONAL; key-value pairs)
             :arg key-value "<KEYNAME>: <VALUE>" 
             ...
-    arg: str choice-type: a choice type, can be on of input-text, numbered-list, bullet-list, formatted-html, formatted-hidden-html
-    arg: str reference: comma-separated list of other PARAMETERS to which this one will react
-    arg: bool filterable: provide interactive filtering (optional; default false)
-    arg: bool filter-length: number of lines to show in the filter (optional; default 1)
+    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox (OPTIONAL; default single)
+    arg: bool filterable: provide interactive filtering (OPTIONAL; default false)
+    arg: bool filter-length: number of lines to show in the filter (OPTIONAL; default 1)
+    arg: str reference: comma-separated list of other PARAMETERS to which this one will react (OPTIONAL; but if you 
+        leave it out, what's the point?)
     Example::
 
     .. code-block:: yaml
 
     # using groovy
     - active-choice-reactive-reference:
-          name: ACTIVE_CHOICE_01
-          project: 'active-choice-example'
-          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          name: ACTIVE_CHOICE_REACTIVE_REFERENCE_01
+          project: 'active-choice-reactive-reference-example'
+          description: "A parameter named ACTIVE_CHOICE_REACTIVE_REFERENCE_01 with options foo and bar."
           groovy:
               script: |
                   return ['foo:selected', 'bar']
@@ -535,14 +543,14 @@ def active_choice_reactive_reference(parser, xml_parent, data):
 
     # using scriptler
     - active-choice-reactive-reference:
-          name: ACTIVE_CHOICE_01
-          project: 'active-choice-example'
-          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          name: ACTIVE_CHOICE_REACTIVE_REFERENCE_02
+          project: 'active-choice-reactive-reference-example'
+          description: "A parameter named ACTIVE_CHOICE_REACTIVE_REFERENCE_02 with options foo and bar."
           scriptler:
-              script: my-scriptler-script
+              script: foo-bar-scriptler
               parameters:
-                  PARAM1:  some-value01
-                  PARAM2:  some-value02
+                  - PARAM1:  some-value01
+                  - PARAM2:  some-value02
           visible-item-count: 1
           reference: STR_PARAM,CHOICE_PARAM
           choice-type: input-text
@@ -550,6 +558,7 @@ def active_choice_reactive_reference(parser, xml_parent, data):
     """
 
     CHOICE_TYPE = {
+        'default': 'ET_TEXT_BOX',
         'input-text': 'ET_TEXT_BOX',
         'numbered-list': 'ET_ORDERED_LIST',
         'bullet-list': 'ET_UNORDERED_LIST',
@@ -574,5 +583,3 @@ def active_choice_reactive_reference(parser, xml_parent, data):
 
     element_name = 'org.biouno.unochoice.DynamicReferenceParameter'
     common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data)
-
-
