@@ -11,9 +11,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import xml.etree.ElementTree as Xml
-# use logging from JJB
+# use system logging
 import logging
+
+import xml.etree.ElementTree as Xml
+import re
 
 
 # these are common tags for both cascade-choice and dynamic-reference
@@ -40,20 +42,85 @@ def _add_element(xml_parent, tag, value):
     Xml.SubElement(xml_parent, tag).text = _to_str(value)
 
 
+# XXXXXX still here for backwards compatibility
 def _add_script(xml_parent, tag, value):
     section = Xml.SubElement(xml_parent, tag)
     Xml.SubElement(section, "script").text = value
     Xml.SubElement(section, "sandbox").text = "false"
 
 
+def _add_sandbox(xml_parent, data):
+    if data:
+        # check for true/false
+        if not re.match(r"(true|false)", _to_str(data)):
+            raise Exception("sandbox must be true or false, not this: '%s'" % _to_str(data))
+        else:
+            _add_element(xml_parent, 'sandbox', _to_str(data))
+    else:
+        # default
+        _add_element(xml_parent, 'sandbox', 'false')
+
+
+def _add_classpath(xml_parent, data):
+    if data:
+        # create the classpath section
+        section = Xml.SubElement(xml_parent, 'classpath')
+        # add the elements
+        uri_match = re.compile (r"(file:/|https*://)", re.IGNORECASE)
+        for url in [x.strip() for x in data.split(',')]:
+            if uri_match.match(url):
+                _add_element(section, 'entry', url)
+            else:
+                raise Exception("classpath entries must start with file:/... or http[s]://... : %s" % url)
+
+
+def _add_groovy(xml_parent, param_name, groovy_data, fallback_data):
+    script_section = Xml.SubElement(xml_parent, 'script', {'class': 'org.biouno.unochoice.model.GroovyScript'})
+
+    script = groovy_data.get('script')
+    if script:
+        section = Xml.SubElement(script_section, 'secureScript')
+        _add_element(section, 'script', script)
+        _add_sandbox(section, groovy_data.get('sandbox'))
+        _add_classpath(section, groovy_data.get('classpath'))
+    else:
+        raise Exception("missing groovy script argument in %s" % param_name)
+
+    if fallback_data:
+        script = fallback_data.get('script')
+        if script:
+            section = Xml.SubElement(script_section, 'secureFallbackScript')
+            _add_element(section, 'script', script)
+            _add_sandbox(section, fallback_data.get('sandbox'))
+            _add_classpath(section, fallback_data.get('classpath'))
+
+
+def _add_scriptler_parameters(xml_parent, data):
+    if data:
+        # create the parameters section
+        parameters = Xml.SubElement(xml_parent, 'parameters', {'class': 'linked-hash-map'})
+        # add the parameters
+        for d in data:
+            for k, v in d.items():
+                entry = Xml.SubElement(parameters, 'entry')
+                _add_element(entry, "string", k)
+                _add_element(entry, "string", v)
+
+
+def _add_scriptler(xml_parent, param_name, data):
+    section = Xml.SubElement(xml_parent, 'script', {'class': 'org.biouno.unochoice.model.ScriptlerScript'})
+
+    script = data['script']
+    if script:
+        _add_element(section, "scriptlerScriptId", script)
+        _add_scriptler_parameters(section, data.get('parameters'))
+    else:
+        raise Exception("missing Scriptler script argument in %s" % param_name)
+
+
+
 def _unique_string(project, name):
     return 'choice-param-{0}-{1}'.format(project, name).lower()
-
-
-def _add_script_option(xml_parent, tag, value):
-    section = Xml.SubElement(xml_parent, tag)
-    Xml.SubElement(section, "script").text = value
-    Xml.SubElement(section, "sandbox").text = "false"
 
 
 def cascade_choice_parameter(parser, xml_parent, data):
@@ -127,7 +194,7 @@ def cascade_choice_parameter(parser, xml_parent, data):
     # added calculated fields
     logging.debug('cascade_choice data: %s' % data['project'])
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
-
+    
 
 def dynamic_reference_parameter(parser, xml_parent, data):
     """yaml: dynamic-reference
@@ -139,11 +206,8 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     arg: str fallback-script: a groovy script which will be evaluated if main script fails (optional)
     :arg str description: a description of the parameter (optional)
     arg: str reference: the name(s) of parameter(s) on changing that the parameter will be re-evaluated
-    arg: str choice-type: a choice type, can be on of input-text, numbered-list, bullet-list, formatted-html,
-         formatted-hidden-html
-    arg: bool omit-value: By default Dynamic Reference Parameters always include a hidden input for the value.
-         If your script creates an input HTML element, you can check this option and the value input field
-         will be omitted.
+    arg: str choice-type: a choice type, can be on of input-text, numbered-list, bullet-list, formatted-html, formatted-hidden-html
+    arg: bool omit-value: By default Dynamic Reference Parameters always include a hidden input for the value. If your script creates an input HTML element, you can check this option and the value input field will be omitted.
     Example::
 
     .. code-block:: yaml
@@ -201,16 +265,314 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'input-text')])
     # added calculated fields
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
+    
+
+def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data):
+    param_name = data.get('name')
+    if not param_name:
+        raise Exception("Missing parameter name (ie, name keyword followed by parameter name)")
+
+    section = Xml.SubElement(xml_parent, element_name)
+
+    for name, tag in REQUIRED:
+        try:
+            _add_element(section, tag, data[name])
+        except KeyError:
+            raise Exception("missing mandatory argument %s" % name)
+
+    for name, tag, default in OPTIONAL:
+        _add_element(section, tag, data.get(name, default))
+
+    # check to see which scripts were defined
+    groovy = data.get('groovy')
+    fallback = data.get('fallback')
+    scriptler = data.get('scriptler')
+
+    # if neither groovy nor scriptler, raise an error
+    if not groovy and not scriptler:
+        raise Exception("missing script argument. need either groovy or scriptler in parameter %s" % param_name)
+
+    # if both groovy/fallback and scriptler, raise an error
+    if (groovy or fallback) and scriptler:
+        raise Exception("illegal use of both groovy/fallback and scriptler scripts in the same parameter %s" % param_name)
+
+    # at this point, we know it's either groovy/fallback or scriptler, but not both
+
+    if groovy:
+        # add groovy, along with optional fallback
+        _add_groovy(section, param_name, data.get('groovy'), data.get('fallback'))
+    elif scriptler:
+        # add scriptler
+        _add_scriptler(section, param_name, data.get('scriptler'))
+
+    # set the choice-type; default is single
+    _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'single')])
+
+    # added calculated fields
+    _add_element(section, 'randomName', _unique_string(data['project'], param_name))
+
 
 
 def active_choice(parser, xml_parent, data):
-    pass
+    """yaml: active-choice
+    Creates an active choice parameter
+    Requires the Jenkins :jenkins-wiki:`Active Choices Plugin <Active+Choices+Plugin>`.
 
+    :arg str name: the name of the parameter
+    :arg str project: the project name (can be anything; not really used)
+    :arg str description: a description of the parameter (optional)
+    # USE EITHER groovy or scripter, not both
+    :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
+        :arg str script: the actual groovy script
+        :arg str classpath: additional class paths for your groovy code (optional; absolutes paths or URLs)
+        :arg str sandbox: run this script in a sandbox (optional; default false)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (optional)
+        :arg str script: the actual fallback groovy script
+        :arg str classpath: additional class paths for your groovy code (optional)
+        :arg str sandbox: run this script in a sandbox (optional; default false)
+    :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an absolute path
+        :arg hash-map parameters: list of parameters (optional; key-value pairs)
+            :arg key-value "<KEYNAME>: <VALUE>" 
+            ...
+    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox
+    arg: bool filterable: provide interactive filtering (optional; default false)
+    arg: bool filter-length: number of lines to show in the filter (optional; default 1)
+    Example::
+
+    .. code-block:: yaml
+
+    # using groovy
+    - active-choice:
+          name: ACTIVE_CHOICE_01
+          project: 'active-choice-example'
+          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          groovy:
+              script: |
+                  return ['foo:selected', 'bar']
+              classpath: /your-path/some-java.jar
+              sandbox: true
+          fallback:
+              script: |
+                  return ['Error']
+          visible-item-count: 1
+          choice-type: single
+
+    # using scriptler
+    - active-choice:
+          name: ACTIVE_CHOICE_01
+          project: 'active-choice-example'
+          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          scriptler:
+              script: my-scriptler-script
+              parameters:
+                  PARAM1:  some-value01
+                  PARAM2:  some-value02
+          visible-item-count: 1
+          choice-type: single
+
+    """
+
+    CHOICE_TYPE = {
+        'single': 'PT_SINGLE_SELECT',
+        'multi': 'PT_MULTI_SELECT',
+        'checkbox': 'PT_CHECKBOX',
+        'radio': 'PT_RADIO',
+    }
+
+    REQUIRED = [
+        # (yaml tag)
+        ('name', 'name'),
+        ('project', 'projectName'),
+    ]
+
+    OPTIONAL = [
+        # ( yaml tag, xml tag, default value )
+        ('description', 'description', ''),
+        ('visible-item-count', 'visibleItemCount', 1),
+        ('filterable', 'filterable', False),
+        ('filter-length', 'filterLength', 1)
+    ]
+
+    element_name = 'org.biouno.unochoice.ChoiceParameter'
+    common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data)
 
 def active_choice_reactive(parser, xml_parent, data):
-    pass
+    """yaml: active-choice-reactive
+    Creates an active choice reactive parameter
+    Requires the Jenkins :jenkins-wiki:`Active Choices Plugin <Active+Choices+Plugin>`.
+
+    :arg str name: the name of the parameter
+    :arg str project: the project name (can be anything; not really used)
+    :arg str description: a description of the parameter (optional)
+    # USE EITHER groovy or scripter, not both
+    :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
+        :arg str script: the actual groovy script
+        :arg str classpath: additional class paths for your groovy code (optional; absolutes paths or URLs)
+        :arg str sandbox: run this script in a sandbox (optional; default false)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (optional)
+        :arg str script: the actual fallback groovy script
+        :arg str classpath: additional class paths for your groovy code (optional)
+        :arg str sandbox: run this script in a sandbox (optional; default false)
+    :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an absolute path
+        :arg hash-map parameters: list of parameters (optional; key-value pairs)
+            :arg key-value "<KEYNAME>: <VALUE>" 
+            ...
+    arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox
+    arg: str reference: comma-separated list of other PARAMETERS to which this one will react
+    arg: bool filterable: provide interactive filtering (optional; default false)
+    arg: bool filter-length: number of lines to show in the filter (optional; default 1)
+    Example::
+
+    .. code-block:: yaml
+
+    # using groovy
+    - active-choice:
+          name: ACTIVE_CHOICE_01
+          project: 'active-choice-example'
+          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          groovy:
+              script: |
+                  return ['foo:selected', 'bar']
+              classpath: /your-path/some-java.jar
+              sandbox: true
+          fallback:
+              script: |
+                  return ['Error']
+          visible-item-count: 1
+          reference: STR_PARAM,CHOICE_PARAM
+          choice-type: single
+
+    # using scriptler
+    - active-choice:
+          name: ACTIVE_CHOICE_01
+          project: 'active-choice-example'
+          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          scriptler:
+              script: my-scriptler-script
+              parameters:
+                  PARAM1:  some-value01
+                  PARAM2:  some-value02
+          visible-item-count: 1
+          reference: STR_PARAM,CHOICE_PARAM
+          choice-type: single
+
+    """
+
+    CHOICE_TYPE = {
+        'single': 'PT_SINGLE_SELECT',
+        'multi': 'PT_MULTI_SELECT',
+        'checkbox': 'PT_CHECKBOX',
+        'radio': 'PT_RADIO',
+    }
+
+    REQUIRED = [
+        # (yaml tag)
+        ('name', 'name'),
+        ('project', 'projectName'),
+    ]
+
+    OPTIONAL = [
+        # ( yaml tag, xml tag, default value )
+        ('description', 'description', ''),
+        ('visible-item-count', 'visibleItemCount', 1),
+        ('reference', 'referencedParameters', ''),
+        ('filterable', 'filterable', False),
+        ('filter-length', 'filterLength', 1)
+    ]
+
+    element_name = 'org.biouno.unochoice.CascadeChoiceParameter'
+    common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data)
 
 
 def active_choice_reactive_reference(parser, xml_parent, data):
-    pass
+    """yaml: active-choice-reactive-reference
+    Creates an active choice reactive reference parameter
+    Requires the Jenkins :jenkins-wiki:`Active Choices Plugin <Active+Choices+Plugin>`.
+
+    :arg str name: the name of the parameter
+    :arg str project: the project name (can be anything; not really used)
+    :arg str description: a description of the parameter (optional)
+    # USE EITHER groovy or scripter, not both
+    :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
+        :arg str script: the actual groovy script
+        :arg str classpath: additional class paths for your groovy code (optional; absolutes paths or URLs)
+        :arg str sandbox: run this script in a sandbox (optional; default false)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (optional)
+        :arg str script: the actual fallback groovy script
+        :arg str classpath: additional class paths for your groovy code (optional)
+        :arg str sandbox: run this script in a sandbox (optional; default false)
+    :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an absolute path
+        :arg hash-map parameters: list of parameters (optional; key-value pairs)
+            :arg key-value "<KEYNAME>: <VALUE>" 
+            ...
+    arg: str choice-type: a choice type, can be on of input-text, numbered-list, bullet-list, formatted-html, formatted-hidden-html
+    arg: str reference: comma-separated list of other PARAMETERS to which this one will react
+    arg: bool filterable: provide interactive filtering (optional; default false)
+    arg: bool filter-length: number of lines to show in the filter (optional; default 1)
+    Example::
+
+    .. code-block:: yaml
+
+    # using groovy
+    - active-choice-reactive-reference:
+          name: ACTIVE_CHOICE_01
+          project: 'active-choice-example'
+          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          groovy:
+              script: |
+                  return ['foo:selected', 'bar']
+              classpath: /your-path/some-java.jar
+              sandbox: true
+          fallback:
+              script: |
+                  return ['Error']
+          visible-item-count: 1
+          reference: STR_PARAM,CHOICE_PARAM
+          choice-type: input-text
+
+    # using scriptler
+    - active-choice-reactive-reference:
+          name: ACTIVE_CHOICE_01
+          project: 'active-choice-example'
+          description: "A parameter named ACTIVE_CHOICE_01 with options foo and bar."
+          scriptler:
+              script: my-scriptler-script
+              parameters:
+                  PARAM1:  some-value01
+                  PARAM2:  some-value02
+          visible-item-count: 1
+          reference: STR_PARAM,CHOICE_PARAM
+          choice-type: input-text
+
+    """
+
+    CHOICE_TYPE = {
+        'input-text': 'ET_TEXT_BOX',
+        'numbered-list': 'ET_ORDERED_LIST',
+        'bullet-list': 'ET_UNORDERED_LIST',
+        'formatted-html': 'ET_FORMATTED_HTML',
+        'formatted-hidden-html': 'ET_FORMATTED_HIDDEN_HTML'
+    }
+
+    REQUIRED = [
+        # (yaml tag)
+        ('name', 'name'),
+        ('project', 'projectName'),
+    ]
+
+    OPTIONAL = [
+        # ( yaml tag, xml tag, default value )
+        ('description', 'description', ''),
+        ('visible-item-count', 'visibleItemCount', 1),
+        ('reference', 'referencedParameters', ''),
+        ('filterable', 'filterable', False),
+        ('filter-length', 'filterLength', 1)
+    ]
+
+    element_name = 'org.biouno.unochoice.DynamicReferenceParameter'
+    common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data)
+
 
