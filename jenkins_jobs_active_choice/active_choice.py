@@ -21,14 +21,14 @@ import re
 # XXXXXX still here for backwards compatibility
 # these are common tags for both cascade-choice and dynamic-reference
 SCRIPT_OPTIONAL = [
-    # ( yaml tag, xml tag, default value )
+    # fields( yaml tag, xml tag, default value )
     ('script-sandbox', 'sandbox', 'False'),
     ('script-classpath', 'classpath', 'False'),
 ]
 
 # XXXXXX still here for backwards compatibility
 FALLBACK_OPTIONAL = [
-    #( yaml tag, xml tag, default value )
+    # fields( yaml tag, xml tag, default value )
     ('fallback-sandbox', 'sandbox', 'False'),
     ('fallback-classpath', 'classpath', 'False'),
 ]
@@ -68,7 +68,7 @@ def _add_classpath(xml_parent, data):
         # create the classpath section
         section = Xml.SubElement(xml_parent, 'classpath')
         # add the elements
-        uri_match = re.compile (r"(file:/|https*://)", re.IGNORECASE)
+        uri_match = re.compile(r"(file:/|https*://)", re.IGNORECASE)
         for url in [x.strip() for x in data.split(',')]:
             if uri_match.match(url):
                 _add_element(section, 'entry', url)
@@ -120,7 +120,6 @@ def _add_scriptler(xml_parent, param_name, data):
         raise Exception("missing Scriptler script argument in %s" % param_name)
 
 
-
 def _unique_string(project, name):
     return 'choice-param-{0}-{1}'.format(project, name).lower()
 
@@ -158,13 +157,13 @@ def cascade_choice_parameter(parser, xml_parent, data):
     }
 
     REQUIRED = [
-        # (yaml tag)
+        # fields(yaml tag)
         ('name', 'name'),
         ('project', 'projectName'),
     ]
 
     OPTIONAL = [
-        # ( yaml tag, xml tag, default value )
+        # fields( yaml tag, xml tag, default value )
         ('description', 'description', ''),
         ('visible-item-count', 'visibleItemCount', 1),
         ('reference', 'referencedParameters', ''),
@@ -235,13 +234,13 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     }
 
     REQUIRED = [
-        # (yaml tag)
+        # fields(yaml tag)
         ('name', 'name'),
         ('project', 'projectName')
     ]
 
     OPTIONAL = [
-        # ( yaml tag, xml tag, default value )
+        # fields( yaml tag, xml tag, default value )
         ('description', 'description', ''),
         ('reference', 'referencedParameters', ''),
         ('omit-value', 'omitValueField', False)
@@ -302,7 +301,7 @@ def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data
     # if both groovy/fallback and scriptler, raise an error
     if (groovy or fallback) and scriptler:
         raise Exception("illegal use of both groovy/fallback and scriptler scripts in the same parameter %s"
-                % param_name)
+                        % param_name)
 
     # at this point, we know it's either groovy/fallback or scriptler, but not both
     if groovy:
@@ -396,13 +395,13 @@ def active_choice(parser, xml_parent, data):
     }
 
     REQUIRED = [
-        # (yaml tag)
+        # fields(yaml tag)
         ('name', 'name'),
         ('project', 'projectName'),
     ]
 
     OPTIONAL = [
-        # ( yaml tag, xml tag, default value )
+        # fields( yaml tag, xml tag, default value )
         ('description', 'description', ''),
         ('visible-item-count', 'visibleItemCount', 1),
         ('filterable', 'filterable', False),
@@ -411,6 +410,7 @@ def active_choice(parser, xml_parent, data):
 
     element_name = 'org.biouno.unochoice.ChoiceParameter'
     common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data)
+
 
 def active_choice_reactive(parser, xml_parent, data):
     """yaml: active-choice-reactive
@@ -489,13 +489,13 @@ def active_choice_reactive(parser, xml_parent, data):
     }
 
     REQUIRED = [
-        # (yaml tag)
+        # fields(yaml tag)
         ('name', 'name'),
         ('project', 'projectName'),
     ]
 
     OPTIONAL = [
-        # ( yaml tag, xml tag, default value )
+        # fields( yaml tag, xml tag, default value )
         ('description', 'description', ''),
         ('visible-item-count', 'visibleItemCount', 1),
         ('reference', 'referencedParameters', ''),
@@ -585,13 +585,13 @@ def active_choice_reactive_reference(parser, xml_parent, data):
     }
 
     REQUIRED = [
-        # (yaml tag)
+        # fields(yaml tag)
         ('name', 'name'),
         ('project', 'projectName'),
     ]
 
     OPTIONAL = [
-        # ( yaml tag, xml tag, default value )
+        # fields( yaml tag, xml tag, default value )
         ('description', 'description', ''),
         ('visible-item-count', 'visibleItemCount', 1),
         ('reference', 'referencedParameters', ''),
