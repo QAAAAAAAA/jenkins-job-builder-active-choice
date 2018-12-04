@@ -18,6 +18,7 @@ import xml.etree.ElementTree as Xml
 import re
 
 
+# XXXXXX still here for backwards compatibility
 # these are common tags for both cascade-choice and dynamic-reference
 SCRIPT_OPTIONAL = [
     # ( yaml tag, xml tag, default value )
@@ -25,6 +26,7 @@ SCRIPT_OPTIONAL = [
     ('script-classpath', 'classpath', 'False'),
 ]
 
+# XXXXXX still here for backwards compatibility
 FALLBACK_OPTIONAL = [
     # ( yaml tag, xml tag, default value )
     ('fallback-sandbox', 'sandbox', 'False'),
@@ -96,9 +98,9 @@ def _add_groovy(xml_parent, param_name, groovy_data, fallback_data):
 
 
 def _add_scriptler_parameters(xml_parent, data):
+    # create the parameters section
+    parameters = Xml.SubElement(xml_parent, 'parameters', {'class': 'linked-hash-map'})
     if data:
-        # create the parameters section
-        parameters = Xml.SubElement(xml_parent, 'parameters', {'class': 'linked-hash-map'})
         # add the parameters
         for d in data:
             for k, v in d.items():
@@ -299,16 +301,19 @@ def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data
         raise Exception("illegal use of both groovy/fallback and scriptler scripts in the same parameter %s" % param_name)
 
     # at this point, we know it's either groovy/fallback or scriptler, but not both
-
     if groovy:
         # add groovy, along with optional fallback
-        _add_groovy(section, param_name, data.get('groovy'), data.get('fallback'))
+        _add_groovy(section, param_name, groovy, fallback)
     elif scriptler:
         # add scriptler
-        _add_scriptler(section, param_name, data.get('scriptler'))
+        _add_scriptler(section, param_name, scriptler)
 
-    # set the choice-type; default is single
+    # set the choice-type
     _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'default')])
+
+    # add an empty parameters section
+    # not sure why this is needed, but this is what the active choice plug-in does, so...
+    Xml.SubElement(section, 'parameters', {'class': 'linked-hash-map'})
 
     # add calculated fields
     _add_element(section, 'randomName', _unique_string(data['project'], param_name))
