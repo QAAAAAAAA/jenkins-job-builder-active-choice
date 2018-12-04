@@ -16,7 +16,8 @@ setup(
             'dynamic-reference = jenkins_jobs_active_choice.active_choice:dynamic_reference_parameter',
             'active-choice = jenkins_jobs_active_choice.active_choice:active_choice',
             'active-choice-reactive = jenkins_jobs_active_choice.active_choice:active_choice_reactive',
-            'active-choice-reactive-reference = jenkins_jobs_active_choice.active_choice:active_choice_reactive_reference']},
+            'active-choice-reactive-reference = '
+            'jenkins_jobs_active_choice.active_choice:active_choice_reactive_reference']},
     packages=['jenkins_jobs_active_choice'],
     classifiers=[
         'Environment :: Console',
