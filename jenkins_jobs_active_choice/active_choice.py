@@ -28,7 +28,7 @@ SCRIPT_OPTIONAL = [
 
 # XXXXXX still here for backwards compatibility
 FALLBACK_OPTIONAL = [
-    # ( yaml tag, xml tag, default value )
+    #( yaml tag, xml tag, default value )
     ('fallback-sandbox', 'sandbox', 'False'),
     ('fallback-classpath', 'classpath', 'False'),
 ]
@@ -197,7 +197,7 @@ def cascade_choice_parameter(parser, xml_parent, data):
     # add calculated fields
     logging.debug('cascade_choice data: %s' % data['project'])
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
-    
+
 
 # XXXXXXX still here for backwards compatibility
 def dynamic_reference_parameter(parser, xml_parent, data):
@@ -210,8 +210,11 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     arg: str fallback-script: a groovy script which will be evaluated if main script fails (optional)
     :arg str description: a description of the parameter (optional)
     arg: str reference: the name(s) of parameter(s) on changing that the parameter will be re-evaluated
-    arg: str choice-type: a choice type, can be on of input-text, numbered-list, bullet-list, formatted-html, formatted-hidden-html
-    arg: bool omit-value: By default Dynamic Reference Parameters always include a hidden input for the value. If your script creates an input HTML element, you can check this option and the value input field will be omitted.
+    arg: str choice-type: a choice type, can be on of input-text, numbered-list, bullet-list, formatted-html,
+        formatted-hidden-html
+    arg: bool omit-value: By default Dynamic Reference Parameters always include a hidden input for the value.
+        If your script creates an input HTML element, you can check this option and the value input field will
+        be omitted.
     Example::
 
     .. code-block:: yaml
@@ -269,7 +272,7 @@ def dynamic_reference_parameter(parser, xml_parent, data):
     _add_element(section, 'choiceType', CHOICE_TYPE[data.get('choice-type', 'input-text')])
     # add calculated fields
     _add_element(section, 'randomName', _unique_string(data['project'], data['name']))
-    
+
 
 def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data):
     param_name = data.get('name')
@@ -298,7 +301,8 @@ def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data
 
     # if both groovy/fallback and scriptler, raise an error
     if (groovy or fallback) and scriptler:
-        raise Exception("illegal use of both groovy/fallback and scriptler scripts in the same parameter %s" % param_name)
+        raise Exception("illegal use of both groovy/fallback and scriptler scripts in the same parameter %s"
+                % param_name)
 
     # at this point, we know it's either groovy/fallback or scriptler, but not both
     if groovy:
@@ -319,7 +323,6 @@ def common_steps(xml_parent, element_name, REQUIRED, OPTIONAL, CHOICE_TYPE, data
     _add_element(section, 'randomName', _unique_string(data['project'], param_name))
 
 
-
 def active_choice(parser, xml_parent, data):
     """yaml: active-choice
     Creates an active choice parameter
@@ -331,17 +334,20 @@ def active_choice(parser, xml_parent, data):
     # REQUIRED: YOU MUST USE EITHER groovy or scripter, not both
     :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
         :arg str script: the actual groovy script
-        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/...
+            or http[s]://...)
         :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
-    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (OPTIONAL)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main
+        groovy fails (OPTIONAL)
         :arg str script: the actual fallback groovy script (REQIRED, IF you define fallback)
-        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/...
+            or http[s]://...)
         :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
     :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
-        :arg str script: simple file name of the scriptler script from the system library of scripts; not an 
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an
             absolute path (REQIRED, IF you define scriptler)
         :arg list parameters: list of parameters (OPTIONAL; key-value pairs)
-            :arg key-value "<KEYNAME>: <VALUE>" 
+            :arg key-value "<KEYNAME>: <VALUE>"
             ...
     arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox (OPTIONAL; default single)
     arg: bool filterable: provide interactive filtering (OPTIONAL; default false)
@@ -417,22 +423,26 @@ def active_choice_reactive(parser, xml_parent, data):
     # REQUIRED: YOU MUST USE EITHER groovy or scripter, not both
     :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
         :arg str script: the actual groovy script
-        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/...
+            or http[s]://...)
         :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
-    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (OPTIONAL)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main
+        groovy fails (OPTIONAL)
         :arg str script: the actual fallback groovy script (REQIRED, IF you define fallback)
-        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/...
+            or http[s]://...)
         :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
     :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
-        :arg str script: simple file name of the scriptler script from the system library of scripts; not an 
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an
             absolute path (REQIRED, IF you define scriptler)
         :arg list parameters: list of parameters (OPTIONAL; key-value pairs)
-            :arg key-value "<KEYNAME>: <VALUE>" 
+            :arg key-value "<KEYNAME>: <VALUE>"
             ...
     arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox (OPTIONAL; default single)
     arg: bool filterable: provide interactive filtering (OPTIONAL; default false)
     arg: bool filter-length: number of lines to show in the filter (OPTIONAL; default 1)
-    arg: str reference: comma-separated list of other PARAMETERS to which this one will react (OPTIONAL; but if you leave it out, what's the point?)
+    arg: str reference: comma-separated list of other PARAMETERS to which this one will react (OPTIONAL; but if you
+        leave it out, what's the point?)
     Example::
 
     .. code-block:: yaml
@@ -508,22 +518,25 @@ def active_choice_reactive_reference(parser, xml_parent, data):
     # REQUIRED: YOU MUST USE EITHER groovy or scripter, not both
     :arg hash-map groovy: the section to define the main groovy script to generate the values for this parameter
         :arg str script: the actual groovy script
-        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/...
+            or http[s]://...)
         :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
-    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main groovy fails (OPTIONAL)
+    :arg hash-map fallback: the section to define the fallback groovy script to generate the values when the main
+        groovy fails (OPTIONAL)
         :arg str script: the actual fallback groovy script (REQIRED, IF you define fallback)
-        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/... or http[s]://...)
+        :arg str classpath: additional class paths for your groovy code (OPTIONAL; URLs of the form file:/...
+            or http[s]://...)
         :arg str sandbox: run this script in a sandbox (OPTIONAL; default false)
     :arg hash-map scriptler: the section to define the main groovy script to generate the values for this parameter
-        :arg str script: simple file name of the scriptler script from the system library of scripts; not an 
+        :arg str script: simple file name of the scriptler script from the system library of scripts; not an
             absolute path (REQIRED, IF you define scriptler)
         :arg list parameters: list of parameters (OPTIONAL; key-value pairs)
-            :arg key-value "<KEYNAME>: <VALUE>" 
+            :arg key-value "<KEYNAME>: <VALUE>"
             ...
     arg: str choice-type: a choice type, can be on of single, multi, radio, checkbox (OPTIONAL; default single)
     arg: bool filterable: provide interactive filtering (OPTIONAL; default false)
     arg: bool filter-length: number of lines to show in the filter (OPTIONAL; default 1)
-    arg: str reference: comma-separated list of other PARAMETERS to which this one will react (OPTIONAL; but if you 
+    arg: str reference: comma-separated list of other PARAMETERS to which this one will react (OPTIONAL; but if you
         leave it out, what's the point?)
     Example::
 
